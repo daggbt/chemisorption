@@ -2243,9 +2243,18 @@ def seekChargeRegulatedPotential( separation, debyeLength):
 
 def getTotalElectronChargeDensity(leftPotential):#, potentialDifference):
 	global separation
+	global concList
 	global allPrintedData             # added because of the error: local variable 'allPrintedData' referenced before assignment
 	getBoundaryCondition(leftPotential,opts.potentialDifference,opts.symmetricBoundary)
 	opts.leftPotential = leftPotential
+	boundaryThrottle = 1
+	
+	boundaryInner.type = BoundaryConditionType.CONSTANT_POTENTIAL
+	boundaryInner.value = opts.leftPotential
+	if opts.symmetricBoundary:
+		boundaryOuter.value = opts.leftPotential
+	else:
+		boundaryOuter.value = opts.leftPotential - opts.potentialDifference
 	
 	debyeLength = getDebyeLength(opts.bulkConcentration,opts.ionCharge)
 	
@@ -2259,7 +2268,8 @@ def getTotalElectronChargeDensity(leftPotential):#, potentialDifference):
 	# ~ scaledDfield2 = project(-Dx(potential,0),Vpot)# * opts.potentialScale / opts.lengthScale /angPerNM
 	scaledDfield = project(-potential.dx(0),Vpot)# * opts.potentialScale / opts.lengthScale /angPerNM
 	
-	surfaceCharge = ChargeRegulatedSurfaceChargeSI(b.value,concList,opts.potentialScale*pot,boundaryThrottle) / EPS_0 / EPS_VAC * 1000 * 1e-9 / opts.potentialScale
+	leftBoundCharge = ChargeRegulatedSurfaceChargeSI(boundaryInner.value,concList,opts.potentialScale*potential,boundaryThrottle) / EPS_0 / EPS_VAC * 1000 * 1e-9 / opts.potentialScale
+	rightBoundCharge = ChargeRegulatedSurfaceChargeSI(boundaryOuter.value,concList,opts.potentialScale*potential,boundaryThrottle) / EPS_0 / EPS_VAC * 1000 * 1e-9 / opts.potentialScale
 	
 	leftElectrodeChargeDensity = sc.epsilon_0 * EPS_0 * 10**7 * evaluateAtTestedPoint( scaledDfield, Point(0) ) * opts.potentialScale / opts.lengthScale /angPerNM
 	leftElectronChargeDensity = leftElectrodeChargeDensity - leftBoundCharge
@@ -2841,7 +2851,7 @@ def collectEnergy( separation, u_all, HamakerConstant=0 ):
   chemTwoBindEnergy=0
   chemNonelectrostaticEnergyNotUsed =0
   for b in pbconfig.boundaryConditionList:
-    if b.type == BoundaryConditionType.CHARGE_REGULATED:
+    if b.type == BoundaryConditionType.CHARGE_REGULATED or b.type == BoundaryConditionType.CONSTANT_POTENTIAL:
       ( chemSiteEntropicEnergyForm, energyChemicalCompetitiveForm, energySiteEntropicCorrectionForm, energyTwoBindForm, energyChemicalNonelectrostaticDontUseForm, boundChargeSI ) = getFreeEnergyChemicalNonelectrostaticForSingleChargeRegulatedSurface(b.value,scaledConcList,potential,opts.ionNESinteraction)
       chemSiteEntropicEnergy           += assemble(chemSiteEntropicEnergyForm*opts.surfaceMeasure_ds(b.domainIndex))  
       chemNonelectrostaticEnergyNotUsed   += assemble(energyChemicalNonelectrostaticDontUseForm*opts.surfaceMeasure_ds(b.domainIndex))
