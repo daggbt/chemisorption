@@ -2241,7 +2241,7 @@ def seekChargeRegulatedPotential( separation, debyeLength):
 
 ####################################################################################################################################################
 
-def getTotalCharge(leftPotential):#, potentialDifference):
+def getTotalElectronChargeDensity(leftPotential):#, potentialDifference):
 	global separation
 	global allPrintedData             # added because of the error: local variable 'allPrintedData' referenced before assignment
 	getBoundaryCondition(leftPotential,opts.potentialDifference,opts.symmetricBoundary)
@@ -2258,6 +2258,8 @@ def getTotalCharge(leftPotential):#, potentialDifference):
 	# ~ scaledDfield1 = project(-grad(potential),VectorFunctionSpace(Vpot.mesh(), "CG", 2))# * opts.potentialScale / opts.lengthScale /angPerNM
 	# ~ scaledDfield2 = project(-Dx(potential,0),Vpot)# * opts.potentialScale / opts.lengthScale /angPerNM
 	scaledDfield = project(-potential.dx(0),Vpot)# * opts.potentialScale / opts.lengthScale /angPerNM
+	
+	surfaceCharge = ChargeRegulatedSurfaceChargeSI(b.value,concList,opts.potentialScale*pot,boundaryThrottle) / EPS_0 / EPS_VAC * 1000 * 1e-9 / opts.potentialScale
 	
 	leftElectrodeChargeDensity = sc.epsilon_0 * EPS_0 * 10**7 * evaluateAtTestedPoint( scaledDfield, Point(0) ) * opts.potentialScale / opts.lengthScale /angPerNM
 	leftElectronChargeDensity = leftElectrodeChargeDensity - leftBoundCharge
@@ -2310,15 +2312,15 @@ def seekChargeBalancedPotential(potentialDifference):
 	
 	while True:
 		lowerBound = 0.85 * lowerBound
-		if(getTotalCharge(lowerBound) < 0):
+		if(getTotalElectronChargeDensity(lowerBound) < 0):
 			break
 	while True:
 		upperBound = 1.05 * upperBound
-		if(getTotalCharge(upperBound) > 0):
+		if(getTotalElectronChargeDensity(upperBound) > 0):
 			break
 			
 		
-	leftPotential, totalChargeDensity = scipy.optimize.brentq(lambda s: getTotalCharge(s), lowerBound, upperBound, xtol=1e-3, full_output=True)
+	leftPotential, totalChargeDensity = scipy.optimize.brentq(lambda s: getTotalElectronChargeDensity(s), lowerBound, upperBound, xtol=1e-3, full_output=True)
 	# ~ if (MPI.rank(mpi_comm) == rootMPI):
 		# ~ print("leftPotential = {}".format(leftPotential))
 		# ~ print("totalChargeDensity from SEEK = {}".format(totalChargeDensity))
@@ -2872,7 +2874,7 @@ pHList = [7]
 #pH = 7
 #opts.pH = pH
 
-#charge55 = getTotalCharge(55)
+#charge55 = getTotalElectronChargeDensity(55)
 #print('Charge is {}'.format(charge55))
 
 #'''
